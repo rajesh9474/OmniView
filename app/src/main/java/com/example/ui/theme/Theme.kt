@@ -29,9 +29,15 @@ private val LightColorScheme = lightColorScheme(
     onPrimaryContainer = OnPrimaryContainerLight,
     secondary = SecondaryLight,
     surface = SurfaceLight,
+    surfaceVariant = SurfaceVariantLight,
+    surfaceContainer = BabyPinkContainer,
+    surfaceContainerHigh = BabyPinkContainerHigh,
     background = BackgroundLight,
     onSurface = OnSurfaceLight,
-    onBackground = OnBackgroundLight
+    onBackground = OnBackgroundLight,
+    onSurfaceVariant = OnSurfaceVariantLight,
+    outline = OutlineLight,
+    outlineVariant = OutlineVariantLight
 )
 
 @Composable

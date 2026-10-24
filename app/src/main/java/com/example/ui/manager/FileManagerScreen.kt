@@ -757,8 +757,8 @@ private fun HomeHeroBanner(
                     Button(
                         onClick = onOpenPicker,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.White,
-                            contentColor = Color(0xFF0F172A)
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            contentColor = MaterialTheme.colorScheme.onSurface
                         ),
                         shape = RoundedCornerShape(24.dp),
                         modifier = Modifier.testTag("hero_open_file_button")
@@ -766,7 +766,7 @@ private fun HomeHeroBanner(
                         Icon(
                             imageVector = Icons.Default.FileOpen,
                             contentDescription = null,
-                            tint = Color(0xFF0284C7),
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))

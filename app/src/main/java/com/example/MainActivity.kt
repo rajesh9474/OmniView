@@ -53,6 +53,10 @@ class MainActivity : ComponentActivity() {
                             recentFiles = recentFiles,
                             favoriteFiles = favoriteFiles,
                             uiState = managerUiState,
+                            isDark = isDark,
+                            onToggleTheme = {
+                                fileManagerViewModel.toggleTheme(isDark)
+                            },
                             onOpenFile = { fileItem ->
                                 viewerViewModel.openFile(fileItem)
                             }
@@ -61,6 +65,10 @@ class MainActivity : ComponentActivity() {
                         CommonViewerScaffold(
                             uiState = viewerUiState,
                             viewModel = viewerViewModel,
+                            isDark = isDark,
+                            onToggleTheme = {
+                                fileManagerViewModel.toggleTheme(isDark)
+                            },
                             onBack = {
                                 viewerViewModel.closeViewer()
                             }
@@ -110,6 +118,12 @@ class MainActivity : ComponentActivity() {
                         viewerViewModel.toggleSearch()
                         return true
                     }
+                }
+                // Ctrl + T: Toggle Dark/Light Theme
+                isCtrl && event.keyCode == KeyEvent.KEYCODE_T -> {
+                    val currentDark = fileManagerViewModel.uiState.value.isDarkTheme ?: false
+                    fileManagerViewModel.toggleTheme(currentDark)
+                    return true
                 }
                 // Ctrl + W: Close Viewer
                 isCtrl && event.keyCode == KeyEvent.KEYCODE_W -> {

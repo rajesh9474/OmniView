@@ -56,6 +56,9 @@ import androidx.compose.ui.unit.sp
 import com.example.data.model.FileCategory
 import com.example.data.model.FileItem
 import com.example.data.model.FileType
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -70,7 +73,8 @@ fun FileItemCard(
     onShare: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    searchQuery: String = ""
 ) {
     var showMenu by remember { mutableStateOf(false) }
     val dateFormat = remember { SimpleDateFormat("MMM d, yyyy", Locale.getDefault()) }
@@ -150,8 +154,9 @@ fun FileItemCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Text(
+                HighlightedText(
                     text = item.name,
+                    query = searchQuery,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
@@ -212,8 +217,9 @@ fun FileItemCard(
                 Spacer(modifier = Modifier.width(12.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
+                    HighlightedText(
                         text = item.name,
+                        query = searchQuery,
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
@@ -338,4 +344,61 @@ private fun getCategoryIcon(type: FileType): ImageVector {
         FileCategory.CODE_DATA -> Icons.Default.Code
         else -> Icons.Default.Description
     }
+}
+
+@Composable
+private fun HighlightedText(
+    text: String,
+    query: String,
+    style: androidx.compose.ui.text.TextStyle,
+    fontWeight: FontWeight = FontWeight.Normal,
+    maxLines: Int = 1,
+    overflow: TextOverflow = TextOverflow.Ellipsis
+) {
+    val cleanQuery = query.trim()
+    if (cleanQuery.isBlank() || !text.contains(cleanQuery, ignoreCase = true)) {
+        Text(
+            text = text,
+            style = style,
+            fontWeight = fontWeight,
+            maxLines = maxLines,
+            overflow = overflow
+        )
+        return
+    }
+
+    val annotated = buildAnnotatedString {
+        var currentIndex = 0
+        val lowerText = text.lowercase(Locale.getDefault())
+        val lowerQuery = cleanQuery.lowercase(Locale.getDefault())
+        val matchLength = lowerQuery.length
+
+        while (currentIndex < text.length) {
+            val matchIndex = lowerText.indexOf(lowerQuery, currentIndex)
+            if (matchIndex == -1) {
+                append(text.substring(currentIndex))
+                break
+            }
+            if (matchIndex > currentIndex) {
+                append(text.substring(currentIndex, matchIndex))
+            }
+            withStyle(
+                SpanStyle(
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.ExtraBold,
+                    background = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                )
+            ) {
+                append(text.substring(matchIndex, matchIndex + matchLength))
+            }
+            currentIndex = matchIndex + matchLength
+        }
+    }
+    Text(
+        text = annotated,
+        style = style,
+        fontWeight = fontWeight,
+        maxLines = maxLines,
+        overflow = overflow
+    )
 }

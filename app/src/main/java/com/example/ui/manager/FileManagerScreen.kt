@@ -31,14 +31,19 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.Star
@@ -50,6 +55,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -63,6 +69,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -85,6 +94,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FileManagerScreen(
     viewModel: FileManagerViewModel,
@@ -92,7 +102,9 @@ fun FileManagerScreen(
     favoriteFiles: List<FileItem>,
     uiState: FileManagerUiState,
     onOpenFile: (FileItem) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isDark: Boolean = false,
+    onToggleTheme: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var itemToRename by remember { mutableStateOf<FileItem?>(null) }
@@ -118,6 +130,76 @@ fun FileManagerScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.FolderOpen,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "OmniView",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = when (uiState.currentTab) {
+                                    ManagerTab.HOME -> "Universal File Viewer"
+                                    ManagerTab.RECENT -> "Recent Files"
+                                    ManagerTab.FAVORITES -> "Favorites"
+                                    ManagerTab.SAMPLES -> "Sample Documents"
+                                    ManagerTab.SETTINGS -> "Preferences"
+                                },
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                },
+                actions = {
+                    // Quick Theme Toggle Button
+                    IconButton(
+                        onClick = onToggleTheme,
+                        modifier = Modifier.testTag("theme_toggle_button")
+                    ) {
+                        Icon(
+                            imageVector = if (isDark) Icons.Default.LightMode else Icons.Default.DarkMode,
+                            contentDescription = if (isDark) "Switch to Light Mode" else "Switch to Dark Mode",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    // Layout Mode Toggle Button
+                    if (uiState.currentTab != ManagerTab.SETTINGS) {
+                        IconButton(
+                            onClick = { viewModel.toggleLayoutMode() },
+                            modifier = Modifier.testTag("top_layout_toggle_button")
+                        ) {
+                            Icon(
+                                imageVector = if (uiState.layoutMode == ViewLayoutMode.LIST) Icons.Default.GridView else Icons.Default.ViewList,
+                                contentDescription = "Toggle Grid/List View"
+                            )
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            )
+        },
         bottomBar = {
             NavigationBar(
                 containerColor = MaterialTheme.colorScheme.surface,
@@ -198,13 +280,21 @@ fun FileManagerScreen(
                         ) {
                             OutlinedTextField(
                                 value = uiState.searchQuery,
-                                onValueChange = { viewModel.setSearchQuery(it) },
-                                placeholder = { Text("Search files by name...") },
-                                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                                onValueChange = {
+                                    viewModel.setSearchQuery(it)
+                                    if (it.isNotBlank()) {
+                                        viewModel.addSearchQueryToHistory(it)
+                                    }
+                                },
+                                placeholder = { Text("Search files by name, extension (.pdf, .xlsx)...") },
+                                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search icon") },
                                 trailingIcon = {
                                     if (uiState.searchQuery.isNotEmpty()) {
-                                        IconButton(onClick = { viewModel.setSearchQuery("") }) {
-                                            Icon(Icons.Default.Clear, contentDescription = "Clear search")
+                                        IconButton(
+                                            onClick = { viewModel.clearSearchQuery() },
+                                            modifier = Modifier.testTag("clear_search_field_btn")
+                                        ) {
+                                            Icon(Icons.Default.Clear, contentDescription = "Clear search text")
                                         }
                                     }
                                 },
@@ -253,20 +343,9 @@ fun FileManagerScreen(
                                     )
                                 }
                             }
-
-                            // Layout mode toggle (Grid vs List)
-                            IconButton(
-                                onClick = { viewModel.toggleLayoutMode() },
-                                modifier = Modifier.testTag("layout_mode_toggle")
-                            ) {
-                                Icon(
-                                    imageVector = if (uiState.layoutMode == ViewLayoutMode.LIST) Icons.Default.GridView else Icons.Default.ViewList,
-                                    contentDescription = "Toggle layout"
-                                )
-                            }
                         }
 
-                        // Categories Carousel
+                        // Quick Search Suggestions / Category Filters Carousel
                         LazyRow(
                             modifier = Modifier.padding(top = 8.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -285,6 +364,49 @@ fun FileManagerScreen(
                                 )
                             }
                         }
+
+                        // Recent Searches Chips (when search query is blank)
+                        if (uiState.searchQuery.isBlank() && uiState.recentSearches.isNotEmpty()) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Recent Searches:",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    items(uiState.recentSearches) { searchItem ->
+                                        Surface(
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                            modifier = Modifier.clickable { viewModel.setSearchQuery(searchItem) }
+                                        ) {
+                                            Text(
+                                                text = searchItem,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                                TextButton(
+                                    onClick = { viewModel.clearSearchHistory() },
+                                    contentPadding = PaddingValues(0.dp),
+                                    modifier = Modifier.height(24.dp)
+                                ) {
+                                    Text("Clear", style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -300,10 +422,16 @@ fun FileManagerScreen(
                 }
 
                 val filteredFiles = remember(sourceFiles, uiState.selectedCategory, uiState.searchQuery, uiState.sortCriteria) {
+                    val cleanQuery = uiState.searchQuery.trim().lowercase(Locale.getDefault())
                     sourceFiles
                         .filter { item ->
                             val matchCat = uiState.selectedCategory == FileCategory.ALL || item.fileType.category == uiState.selectedCategory
-                            val matchSearch = uiState.searchQuery.isBlank() || item.name.contains(uiState.searchQuery, ignoreCase = true)
+                            val matchSearch = if (cleanQuery.isBlank()) true else {
+                                item.name.lowercase(Locale.getDefault()).contains(cleanQuery) ||
+                                item.fileType.extension.lowercase(Locale.getDefault()).contains(cleanQuery) ||
+                                item.fileType.displayName.lowercase(Locale.getDefault()).contains(cleanQuery) ||
+                                item.fileType.category.displayName.lowercase(Locale.getDefault()).contains(cleanQuery)
+                            }
                             matchCat && matchSearch
                         }
                         .sortedWith { a, b ->
@@ -319,6 +447,48 @@ fun FileManagerScreen(
                         }
                 }
 
+                // Active Search Match Counter Banner
+                if (uiState.searchQuery.isNotBlank() && filteredFiles.isNotEmpty()) {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 6.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "${filteredFiles.size} matching file${if (filteredFiles.size > 1) "s" else ""} found",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            TextButton(
+                                onClick = { viewModel.clearSearchQuery() },
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                                modifier = Modifier.height(28.dp)
+                            ) {
+                                Text("Clear", style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                    }
+                }
+
                 if (filteredFiles.isEmpty()) {
                     // Empty State
                     Box(
@@ -331,43 +501,81 @@ fun FileManagerScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(72.dp)
-                                    .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.FolderOpen,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(36.dp)
+                            if (uiState.searchQuery.isNotBlank()) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(72.dp)
+                                        .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.SearchOff,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(36.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "No files match \"${uiState.searchQuery}\"",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
                                 )
-                            }
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = if (uiState.searchQuery.isNotBlank()) "No files match \"${uiState.searchQuery}\""
-                                else if (uiState.currentTab == ManagerTab.FAVORITES) "No favorite files yet"
-                                else "No files in this view",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = if (uiState.currentTab == ManagerTab.FAVORITES) "Tap the star icon on any document to add it to favorites."
-                                else "Tap \"Open File\" to browse from storage, or switch to the Samples tab to test pre-loaded documents.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 24.dp)
-                            )
-                            Spacer(modifier = Modifier.height(20.dp))
-                            Button(
-                                onClick = { filePickerLauncher.launch(arrayOf("*/*")) },
-                                modifier = Modifier.testTag("empty_state_open_btn")
-                            ) {
-                                Icon(Icons.Default.FileOpen, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Open File from Storage")
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "Try searching by file extension (e.g. .pdf, .docx, .xlsx) or clearing your filters.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(horizontal = 24.dp)
+                                )
+                                Spacer(modifier = Modifier.height(20.dp))
+                                Button(
+                                    onClick = { viewModel.clearSearchQuery() },
+                                    modifier = Modifier.testTag("empty_search_clear_btn")
+                                ) {
+                                    Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Reset Search")
+                                }
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .size(72.dp)
+                                        .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.FolderOpen,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(36.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = if (uiState.currentTab == ManagerTab.FAVORITES) "No favorite files yet" else "No files in this view",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = if (uiState.currentTab == ManagerTab.FAVORITES) "Tap the star icon on any document to add it to favorites."
+                                    else "Tap \"Open File\" to browse from storage, or switch to the Samples tab to test pre-loaded documents.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(horizontal = 24.dp)
+                                )
+                                Spacer(modifier = Modifier.height(20.dp))
+                                Button(
+                                    onClick = { filePickerLauncher.launch(arrayOf("*/*")) },
+                                    modifier = Modifier.testTag("empty_state_open_btn")
+                                ) {
+                                    Icon(Icons.Default.FileOpen, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Open File from Storage")
+                                }
                             }
                         }
                     }
@@ -385,6 +593,7 @@ fun FileManagerScreen(
                                 FileItemCard(
                                     item = item,
                                     isGrid = true,
+                                    searchQuery = uiState.searchQuery,
                                     onOpen = { onOpenFile(item) },
                                     onToggleFavorite = { viewModel.toggleFavorite(item) },
                                     onDetails = { itemForDetails = item },
@@ -407,6 +616,7 @@ fun FileManagerScreen(
                                 FileItemCard(
                                     item = item,
                                     isGrid = false,
+                                    searchQuery = uiState.searchQuery,
                                     onOpen = { onOpenFile(item) },
                                     onToggleFavorite = { viewModel.toggleFavorite(item) },
                                     onDetails = { itemForDetails = item },

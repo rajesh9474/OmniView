@@ -2,6 +2,7 @@ package com.example.ui.manager
 
 import android.app.Application
 import android.net.Uri
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.model.FileCategory
@@ -45,14 +46,25 @@ data class FileManagerUiState(
     val sortCriteria: SortCriteria = SortCriteria.DATE_DESC,
     val layoutMode: ViewLayoutMode = ViewLayoutMode.LIST,
     val sampleFiles: List<FileItem> = emptyList(),
-    val isDarkTheme: Boolean? = null // null means system default
+    val isDarkTheme: Boolean? = null, // null means system default
+    val recentSearches: List<String> = emptyList()
 )
 
 class FileManagerViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = FileRepository(application)
+    private val prefs = application.getSharedPreferences("omniview_settings", Context.MODE_PRIVATE)
 
-    private val _uiState = MutableStateFlow(FileManagerUiState())
+    private val _uiState = MutableStateFlow(
+        FileManagerUiState(
+            isDarkTheme = when (prefs.getString("theme_mode", "SYSTEM")) {
+                "DARK" -> true
+                "LIGHT" -> false
+                else -> null
+            },
+            recentSearches = prefs.getStringSet("recent_searches", emptySet())?.toList() ?: emptyList()
+        )
+    )
     val uiState: StateFlow<FileManagerUiState> = _uiState.asStateFlow()
 
     val recentFiles = repository.recentFiles.stateIn(
@@ -90,6 +102,26 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
         _uiState.value = _uiState.value.copy(searchQuery = query)
     }
 
+    fun clearSearchQuery() {
+        _uiState.value = _uiState.value.copy(searchQuery = "")
+    }
+
+    fun addSearchQueryToHistory(query: String) {
+        val trimmed = query.trim()
+        if (trimmed.length < 2) return
+        val current = _uiState.value.recentSearches.toMutableList()
+        current.remove(trimmed)
+        current.add(0, trimmed)
+        val updated = current.take(6)
+        _uiState.value = _uiState.value.copy(recentSearches = updated)
+        prefs.edit().putStringSet("recent_searches", updated.toSet()).apply()
+    }
+
+    fun clearSearchHistory() {
+        _uiState.value = _uiState.value.copy(recentSearches = emptyList())
+        prefs.edit().remove("recent_searches").apply()
+    }
+
     fun setSortCriteria(sort: SortCriteria) {
         _uiState.value = _uiState.value.copy(sortCriteria = sort)
     }
@@ -101,6 +133,24 @@ class FileManagerViewModel(application: Application) : AndroidViewModel(applicat
 
     fun setThemeMode(dark: Boolean?) {
         _uiState.value = _uiState.value.copy(isDarkTheme = dark)
+        prefs.edit().putString(
+            "theme_mode",
+            when (dark) {
+                true -> "DARK"
+                false -> "LIGHT"
+                null -> "SYSTEM"
+            }
+        ).apply()
+    }
+
+    fun toggleTheme(isSystemCurrentlyDark: Boolean = false) {
+        val current = _uiState.value.isDarkTheme
+        val next = when (current) {
+            null -> !isSystemCurrentlyDark
+            true -> false
+            false -> true
+        }
+        setThemeMode(next)
     }
 
     fun toggleFavorite(fileItem: FileItem) {

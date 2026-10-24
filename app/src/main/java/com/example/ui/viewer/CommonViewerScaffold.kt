@@ -34,6 +34,8 @@ import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
@@ -93,7 +95,9 @@ fun CommonViewerScaffold(
     uiState: ViewerUiState,
     viewModel: ViewerViewModel,
     onBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isDark: Boolean = false,
+    onToggleTheme: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var showDetailsDialog by remember { mutableStateOf(false) }
@@ -273,6 +277,18 @@ fun CommonViewerScaffold(
                                             imageVector = Icons.Default.Search,
                                             contentDescription = "Search text",
                                             tint = if (uiState.isSearchActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+
+                                    // Theme Toggle
+                                    IconButton(
+                                        onClick = onToggleTheme,
+                                        modifier = Modifier.testTag("viewer_theme_toggle")
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isDark) Icons.Default.LightMode else Icons.Default.DarkMode,
+                                            contentDescription = if (isDark) "Switch to Light Mode" else "Switch to Dark Mode",
+                                            tint = MaterialTheme.colorScheme.primary
                                         )
                                     }
 

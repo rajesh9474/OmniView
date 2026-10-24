@@ -34,9 +34,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Initialize Google Mobile Ads SDK safely
-        com.example.core.ads.AdManager.initialize(this)
-
         // Handle incoming intent (e.g. user clicked file in external file manager or shared it)
         handleIncomingIntent(intent)
 
@@ -65,9 +62,7 @@ class MainActivity : ComponentActivity() {
                             uiState = viewerUiState,
                             viewModel = viewerViewModel,
                             onBack = {
-                                com.example.core.ads.AdManager.showInterstitial(this@MainActivity) {
-                                    viewerViewModel.closeViewer()
-                                }
+                                viewerViewModel.closeViewer()
                             }
                         )
                     }

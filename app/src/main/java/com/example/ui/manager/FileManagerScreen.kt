@@ -119,14 +119,10 @@ fun FileManagerScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         bottomBar = {
-            Column {
-                if (uiState.currentTab != ManagerTab.SETTINGS) {
-                    com.example.ui.ads.AdBannerComponent()
-                }
-                NavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 6.dp
-                ) {
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.surface,
+                tonalElevation = 6.dp
+            ) {
                     NavigationBarItem(
                         selected = uiState.currentTab == ManagerTab.HOME,
                         onClick = { viewModel.setTab(ManagerTab.HOME) },
@@ -164,7 +160,6 @@ fun FileManagerScreen(
                     )
                 }
             }
-        }
     ) { paddingValues ->
         if (uiState.currentTab == ManagerTab.SETTINGS) {
             SettingsScreen(
